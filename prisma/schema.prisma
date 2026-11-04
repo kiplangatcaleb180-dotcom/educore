@@ -1,0 +1,553 @@
+// MODULE: Database Structure Definition (Schema)
+// Blueprint for all tables and relationships in the database.
+
+// Configures the Prisma client generation
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Database connection details
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User role definitions
+enum Role {
+  STUDENT
+  LECTURER
+  ADMIN
+  SUPERADMIN
+  DEPARTMENT_HEAD
+}
+
+// Exam category definitions
+enum ExamType {
+  CAT
+  SAT
+  QUIZ
+  ASSIGNMENT
+}
+
+// Exam lifecycle states
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+}
+
+// Live class activity states
+enum LiveClassStatus {
+  SCHEDULED
+  ACTIVE
+  ENDED
+}
+
+// Question format definitions
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  ESSAY
+}
+
+// Submission workflow states
+enum SubmissionStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+  REVIEWED
+}
+
+// Course registration states
+enum EnrollmentStatus {
+  ENROLLED
+  DROPPED
+  COMPLETED
+  PENDING
+}
+
+// Attendance record states
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+// Request approval states
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+// Log severity levels
+enum LogLevel {
+  INFO
+  WARNING
+  ERROR
+  DEBUG
+}
+
+// User profile model
+model User {
+  id                  Int                  @id @default(autoincrement())
+  firstName           String
+  middleName          String?
+  surname             String
+  email               String               @unique
+  phone               String?              @unique
+  role                Role                 @default(STUDENT)
+  passwordHash        String
+  avatar              String?
+  emailVerified       Boolean              @default(false)
+  pendingApproval     Boolean              @default(true)
+  isActive            Boolean              @default(false)
+  isBlocked           Boolean              @default(false)
+  failedLoginAttempts Int                  @default(0)
+  studentId           String?              @unique
+  staffId             String?              @unique
+  departmentId        Int?
+  overallGPA          Float?               @default(0.0)
+  creditsEarned       Int?                 @default(0)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  // Relationships
+  department          Department?          @relation("UserDepartment", fields: [departmentId], references: [id])
+  facultiesHeaded     Faculty[]            @relation("FacultyDean")
+  departmentsHeaded   Department[]         @relation("DepartmentHead")
+  coursesTaught       Course[]             @relation("CourseLecturer")
+  enrollments         CourseEnrollment[]
+  examsCreated        Exam[]               @relation("ExamCreator")
+  submissions         Submission[]         @relation("StudentSubmissions")
+  submissionsGraded   Submission[]         @relation("GraderSubmissions")
+  assignmentsCreated  Assignment[]         @relation("AssignmentCreator")
+  assignmentSubmissions AssignmentSubmission[] @relation("StudentAssignmentSubmissions")
+  materialsUploaded   Material[]           @relation("MaterialUploader")
+  attendanceConducted Attendance[]         @relation("AttendanceConductor")
+  attendanceRecords   AttendanceRecord[]   @relation("StudentAttendanceRecords")
+  messagesSent        Message[]            @relation("MessageSender")
+  conversations       ConversationParticipant[]
+  notifications       Notification[]
+  logs                Log[]
+  requests            Request[]
+  liveClassesHosted   LiveClass[]          @relation("LiveClassLecturer")
+  consultationsRequested Consultation[]     @relation("StudentConsultations")
+  consultationsReceived  Consultation[]      @relation("LecturerConsultations")
+  liveClassParticipation LiveClassParticipant[]
+  broadcastsSent         BroadcastMessage[]
+
+  @@map("users")
+}
+
+// Tracks student participation in live online classes
+model LiveClassParticipant {
+  id           Int       @id @default(autoincrement())
+  liveClassId  Int
+  studentId    Int
+  totalSeconds Int       @default(0)
+  lastJoinedAt DateTime?
+  isPresent    Boolean   @default(false)
+
+  liveClass    LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  student      User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([liveClassId, studentId])
+  @@map("live_class_participants")
+}
+
+// Stores public announcements for users
+model BroadcastMessage {
+  id          Int      @id @default(autoincrement())
+  senderId    Int
+  title       String
+  content     String   @db.Text
+  targetRole  Role?
+  courseId    Int?
+  createdAt   DateTime @default(now())
+
+  sender      User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@map("broadcast_messages")
+}
+
+// Manages consultation requests between students and lecturers
+model Consultation {
+  id          Int           @id @default(autoincrement())
+  studentId   Int
+  lecturerId  Int
+  subject     String
+  message     String        @db.Text
+  status      RequestStatus @default(PENDING)
+  response    String?       @db.Text
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  student     User          @relation("StudentConsultations", fields: [studentId], references: [id], onDelete: Cascade)
+  lecturer    User          @relation("LecturerConsultations", fields: [lecturerId], references: [id], onDelete: Cascade)
+
+  @@map("consultations")
+}
+
+// Faculty model (e.g., School of Business)
+model Faculty {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  code        String       @unique
+  description String?      @db.Text
+  deanId      Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  dean        User?        @relation("FacultyDean", fields: [deanId], references: [id])
+  departments Department[]
+
+  @@map("faculties")
+}
+
+// Department model (e.g., Accounting)
+model Department {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  code        String    @unique
+  description String?   @db.Text
+  facultyId   Int?
+  headId      Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  faculty     Faculty?  @relation(fields: [facultyId], references: [id])
+  head        User?     @relation("DepartmentHead", fields: [headId], references: [id])
+  users       User[]    @relation("UserDepartment")
+  courses     Course[]
+
+  @@map("departments")
+}
+
+// Course model (e.g., MATH101)
+model Course {
+  id           Int                @id @default(autoincrement())
+  code         String             @unique
+  name         String
+  description  String?            @db.Text
+  credits      Int                @default(3)
+  departmentId Int?
+  lecturerId   Int?
+  semester     String?            @default("1")
+  academicYear String?            @default("2025/2026")
+  scheduleDay  String?            @default("Monday")
+  scheduleTime String?            @default("10:00 AM - 12:00 PM")
+  room         String?            @default("Virtual Room 1")
+  syllabusProgress Int            @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  department   Department?        @relation(fields: [departmentId], references: [id])
+  lecturer     User?              @relation("CourseLecturer", fields: [lecturerId], references: [id])
+  enrollments  CourseEnrollment[]
+  exams        Exam[]
+  assignments  Assignment[]
+  materials    Material[]
+  attendances  Attendance[]
+  liveClasses  LiveClass[]
+  broadcasts   BroadcastMessage[]
+
+  @@map("courses")
+}
+
+// Live online class session
+model LiveClass {
+  id          Int             @id @default(autoincrement())
+  title       String
+  courseId    Int
+  lecturerId  Int
+  status      LiveClassStatus @default(ACTIVE)
+  startedAt   DateTime        @default(now())
+  endedAt     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lecturer    User            @relation("LiveClassLecturer", fields: [lecturerId], references: [id], onDelete: Cascade)
+  participants LiveClassParticipant[]
+  attendance   Attendance?
+
+  @@map("live_classes")
+}
+
+// Student course enrollment record
+model CourseEnrollment {
+  id             Int              @id @default(autoincrement())
+  courseId       Int
+  studentId      Int
+  status         EnrollmentStatus @default(ENROLLED)
+  grade          String?
+  score          Float?
+  enrollmentDate DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student        User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId])
+  @@map("course_enrollments")
+}
+
+// Exam or assessment definition
+model Exam {
+  id                  Int          @id @default(autoincrement())
+  title               String
+  code                String       @unique
+  description         String?      @db.Text
+  type                ExamType     @default(CAT)
+  courseId            Int
+  creatorId           Int
+  scheduledAt         DateTime?
+  startTime           String?
+  endTime             String?
+  durationMinutes     Int          @default(60)
+  totalMarks          Int          @default(100)
+  passMark            Int          @default(50)
+  status              ExamStatus   @default(DRAFT)
+  isOpen              Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  course              Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator             User         @relation("ExamCreator", fields: [creatorId], references: [id])
+  questions           Question[]
+  submissions         Submission[]
+
+  @@map("exams")
+}
+
+// Individual exam question
+model Question {
+  id            Int          @id @default(autoincrement())
+  examId        Int
+  type          QuestionType @default(MULTIPLE_CHOICE)
+  text          String       @db.Text
+  options       Json?
+  correctAnswer String?      @db.Text
+  points        Int          @default(1)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  exam          Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+// Student exam submission
+model Submission {
+  id          Int              @id @default(autoincrement())
+  examId      Int
+  studentId   Int
+  answers     Json
+  score       Float            @default(0)
+  percentage  Float?           @default(0)
+  grade       String?
+  status      SubmissionStatus @default(SUBMITTED)
+  tabSwitches Int              @default(0)
+  gradedBy    Int?
+  gradedAt    DateTime?
+  feedback    String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  exam        Exam             @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     User             @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+  grader      User?            @relation("GraderSubmissions", fields: [gradedBy], references: [id])
+
+  @@unique([examId, studentId])
+  @@map("submissions")
+}
+
+// Homework assignment definition
+model Assignment {
+  id          Int                    @id @default(autoincrement())
+  courseId    Int
+  createdBy   Int
+  title       String
+  description String?                @db.Text
+  totalMarks  Int                    @default(100)
+  dueDate     DateTime
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  course      Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  creator     User                   @relation("AssignmentCreator", fields: [createdBy], references: [id])
+  submissions AssignmentSubmission[]
+
+  @@map("assignments")
+}
+
+// Student assignment submission record
+model AssignmentSubmission {
+  id             Int        @id @default(autoincrement())
+  assignmentId   Int
+  studentId      Int
+  submissionText String?    @db.Text
+  filePath       String?
+  grade          Float?
+  feedback       String?    @db.Text
+  gradedBy       Int?
+  submittedAt    DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  assignment     Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student        User       @relation("StudentAssignmentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@map("assignment_submissions")
+}
+
+// Course study material
+model Material {
+  id          Int      @id @default(autoincrement())
+  courseId    Int
+  uploaderId  Int
+  title       String
+  description String?  @db.Text
+  filePath    String
+  fileSize    Int?     @default(0)
+  mimeType    String?  @default("application/pdf")
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  uploader    User     @relation("MaterialUploader", fields: [uploaderId], references: [id])
+
+  @@map("materials")
+}
+
+// Class attendance session
+model Attendance {
+  id          Int                @id @default(autoincrement())
+  courseId    Int
+  conductedBy Int
+  sessionDate DateTime
+  topic       String?
+  liveClassId Int?               @unique
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  conductor   User               @relation("AttendanceConductor", fields: [conductedBy], references: [id])
+  liveClass   LiveClass?         @relation(fields: [liveClassId], references: [id], onDelete: SetNull)
+  records     AttendanceRecord[]
+
+  @@map("attendance")
+}
+
+// Individual student attendance record
+model AttendanceRecord {
+  id           Int              @id @default(autoincrement())
+  attendanceId Int
+  studentId    Int
+  status       AttendanceStatus @default(PRESENT)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  attendance   Attendance       @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  student      User             @relation("StudentAttendanceRecords", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([attendanceId, studentId])
+  @@map("attendance_records")
+}
+
+// Chat or conversation space
+model Conversation {
+  id           Int                       @id @default(autoincrement())
+  type         String                    @default("DIRECT")
+  title        String?
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+// Links users to conversations
+model ConversationParticipant {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  userId         Int
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+// Single chat message
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// User alert or notification
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  title     String
+  message   String   @db.Text
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Security audit log entry
+model Log {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  level     LogLevel @default(INFO)
+  ip        String?
+  userAgent String?  @db.Text
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("logs")
+}
+
+// Administrative request or application
+model Request {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  type        String
+  title       String
+  description String?       @db.Text
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("requests")
+}

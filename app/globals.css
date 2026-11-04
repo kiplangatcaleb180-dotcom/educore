@@ -1,0 +1,144 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --navy-bg: #070a13;
+  --navy-surface: #0f172a;
+  --navy-surface-light: #1e293b;
+  --navy-surface-lighter: #334155;
+
+  --accent: #38bdf8;
+  --accent-hover: #0284c7;
+  --accent-glow: rgba(56, 189, 248, 0.25);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --glass-bg: rgba(15, 23, 42, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(56, 189, 248, 0.3);
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--navy-bg);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--navy-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--navy-surface-lighter);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Glassmorphic Panel Utility */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+}
+
+/* Responsive Table Wrapper */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+thead th {
+  background: var(--navy-surface-light);
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+tbody td {
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-primary);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--navy-surface-light);
+}
+
+/* LiveKit classroom theme: the media primitives remain accessible while
+   matching the rest of the Educore dashboard. */
+.edu-livekit {
+  --lk-bg: #020617;
+  --lk-bg2: #0f172a;
+  --lk-fg: #38bdf8;
+  --lk-fg5: #e2e8f0;
+  --lk-control-bg: #1e293b;
+  --lk-control-hover-bg: #334155;
+  --lk-border-color: rgba(148, 163, 184, 0.18);
+  --lk-chat-bg: #0f172a;
+  --lk-chat-message-bg: #1e293b;
+}
+
+.edu-livekit .lk-video-conference {
+  min-height: 0;
+  flex: 1;
+}
+
+.edu-livekit .lk-control-bar {
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.96);
+  padding: 0.8rem;
+}
+
+.edu-livekit .lk-participant-tile,
+.edu-livekit .lk-focus-layout {
+  border-radius: 0.75rem;
+}
+
+.edu-prejoin .lk-button,
+.edu-prejoin-controls .lk-button {
+  border-radius: 0.6rem;
+}
